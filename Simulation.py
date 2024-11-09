@@ -1,6 +1,7 @@
 import pygame
 import Drone
 import Target
+import random
 
 
 class Simulation:
@@ -13,10 +14,21 @@ class Simulation:
 
         # Create instances of Drone and Target
         self.drone = Drone.Drone(x=(self.WIDTH // 2) - 75, y=self.HEIGHT // 2)
+        self.target = self._generate_target()
 
-        # self.target = Target.Target(x=self.WIDTH // 4, y=self.HEIGHT // 4)
         self.clock = pygame.time.Clock()
         self.running = True
+
+    def _generate_target(self) -> Target.Target:
+        # add 50 padding
+        x = random.randint(50, self.WIDTH - 50)
+        y = random.randint(50, self.HEIGHT - 50)
+        return Target.Target(x, y)
+
+    def calculate_target_distance(self):
+        return (
+            (self.drone.x - self.target.x) ** 2 + (self.drone.y - self.target.y) ** 2
+        ) ** 0.5
 
     def run(self):
         while self.running:
@@ -45,12 +57,17 @@ class Simulation:
         # Move the drone towards the target
         self.drone.move(pressed=pygame.key.get_pressed())
 
+        if self.calculate_target_distance() < 40:
+            # Generate a new target if the drone has reached the current target
+            self.target = self._generate_target()
+
     def draw(self):
         # Clear the screen
         self.window.fill((162, 210, 255))  # Fill the window with white
 
         # Draw the drone and the target
         self.drone.draw(self.window)
+        self.target.draw(self.window)
 
         # Update the display
         pygame.display.flip()

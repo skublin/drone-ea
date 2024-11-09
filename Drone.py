@@ -103,4 +103,11 @@ class Drone:
             drone = pygame.transform.rotate(self.imp2, self.angle)
             self.img = 1
 
-        surface.blit(drone, (self.x, self.y))
+        # get center of the drone
+        drone_x, drone_y = (
+            self.x - drone.get_width() // 2,
+            self.y - drone.get_height() // 2,
+        )
+
+        surface.blit(drone, (drone_x, drone_y))
+        pygame.draw.circle(surface, (0, 0, 0), (self.x, self.y), 10)
