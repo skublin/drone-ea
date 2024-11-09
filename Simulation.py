@@ -29,7 +29,6 @@ class Simulation:
 
     def handle_events(self):
         for event in pygame.event.get():
-            self.drone.handle_event(event)
             if event.type == pygame.QUIT:
                 self.running = False
             # elif event.type == pygame.MOUSEBUTTONDOWN:
@@ -44,8 +43,7 @@ class Simulation:
 
     def update(self):
         # Move the drone towards the target
-        # self.drone.move_towards(self.target.x, self.target.y)
-        self.drone.move()
+        self.drone.move(pressed=pygame.key.get_pressed())
 
     def draw(self):
         # Clear the screen

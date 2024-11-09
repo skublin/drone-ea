@@ -7,10 +7,13 @@ class Drone:
         self.x = x  # X position
         self.y = y  # Y position
 
-        imp = pygame.image.load("assets/drone-1.png").convert_alpha()
+        imp1 = pygame.image.load("assets/drone-1.png").convert_alpha()
+        imp2 = pygame.image.load("assets/drone-2.png").convert_alpha()
         # resize the drone image
-        height = int(imp.get_height() * (width / imp.get_width()))
-        self.imp = pygame.transform.scale(imp, (width, height))
+        height = int(imp1.get_height() * (width / imp1.get_width()))
+        self.imp1 = pygame.transform.scale(imp1, (width, height))
+        self.imp2 = pygame.transform.scale(imp2, (width, height))
+        self.img = 1
 
         # Drone properties (needed for physics)
         self.mass, self.drone_size, self.gravity = 1, 25, 0.1
@@ -52,32 +55,36 @@ class Drone:
             (self.right_thruster - self.left_thruster) * self.drone_size
         ) / self.mass
 
-    def handle_event(self, event):
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_w:
-                # Increase both thrusters force
-                self.left_thruster += self.thruster_amplitude
-                self.right_thruster += self.thruster_amplitude
-            elif event.key == pygame.K_s:
-                # Decrease both thrusters force
-                self.left_thruster -= self.thruster_amplitude
-                self.right_thruster -= self.thruster_amplitude
-            elif event.key == pygame.K_a:
-                # Decrease left thruster force
-                self.left_thruster -= self.thruster_diff_amplitude
-            elif event.key == pygame.K_d:
-                # Decrease right thruster force
-                self.right_thruster -= self.thruster_diff_amplitude
-        if event.type == pygame.KEYUP and event.key in (
-            pygame.K_w,
-            pygame.K_s,
-            pygame.K_a,
-            pygame.K_d,
-        ):
-            # Reset thrusters to default values
-            self.left_thruster, self.right_thruster = 0.04, 0.04
+    def _update_thruster_force(self, pressed: list[int]):
+        # There can be multiple keys pressed at the same time
 
-    def move(self):
+        # Set thrusters to default value
+        self.left_thruster, self.right_thruster = (
+            self.thruster_amplitude,
+            self.thruster_amplitude,
+        )
+
+        if pressed[pygame.K_w]:
+            # Increase both thrusters force
+            self.left_thruster += self.thruster_amplitude
+            self.right_thruster += self.thruster_amplitude
+
+        if pressed[pygame.K_s]:
+            # Decrease both thrusters force
+            self.left_thruster -= self.thruster_amplitude
+            self.right_thruster -= self.thruster_amplitude
+
+        if pressed[pygame.K_a]:
+            # Decrease left thruster force
+            self.left_thruster -= self.thruster_diff_amplitude
+
+        if pressed[pygame.K_d]:
+            # Decrease right thruster force
+            self.right_thruster -= self.thruster_diff_amplitude
+
+    def move(self, pressed: list[int]):
+        self._update_thruster_force(pressed)
+
         self.x_speed += self.x_acceleration
         self.y_speed += self.y_acceleration
         self.angular_speed += self.angular_acceleration
@@ -88,8 +95,12 @@ class Drone:
 
     def draw(self, surface):
         # draw drone and rotate it based on angle
-        drone = pygame.transform.rotate(self.imp, self.angle)
+
+        if self.img == 1:
+            drone = pygame.transform.rotate(self.imp1, self.angle)
+            self.img = 2
+        else:
+            drone = pygame.transform.rotate(self.imp2, self.angle)
+            self.img = 1
+
         surface.blit(drone, (self.x, self.y))
-        # pygame.draw.rect(
-        #     surface, self.color, (self.x, self.y, self.size[0], self.size[1])
-        # )
