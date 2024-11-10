@@ -1,16 +1,21 @@
+import os
 import math
 import pygame
 
 
 class Drone:
-    def __init__(self, x, y, width=150):
+    def __init__(self, assets_path, x, y, width=150):
         self.x = x  # X position
         self.y = y  # Y position
 
         self.width = width
 
-        imp1 = pygame.image.load("assets/drone-1.png").convert_alpha()
-        imp2 = pygame.image.load("assets/drone-2.png").convert_alpha()
+        imp1 = pygame.image.load(
+            os.path.join(assets_path, "drone-1.png")
+        ).convert_alpha()
+        imp2 = pygame.image.load(
+            os.path.join(assets_path, "drone-2.png")
+        ).convert_alpha()
         # resize the drone image
         self.height = int(imp1.get_height() * (width / imp1.get_width()))
         self.imp1 = pygame.transform.scale(imp1, (width, self.height))

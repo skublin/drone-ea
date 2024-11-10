@@ -1,30 +1,40 @@
+import os
 import pygame
-import Drone
-import Target
 import random
+from models import Drone
+from models import Target
 
 
 class Simulation:
     def __init__(self, width=800, height=600):
         pygame.init()
+        pygame.display.set_caption("Drone Simulation")
+
         self.WIDTH = width
         self.HEIGHT = height
 
         self.BOARD_WIDTH, self.BOARD_HEIGHT = 2 * self.WIDTH, 2 * self.HEIGHT
-        bg_img = pygame.image.load("assets/bg.jpg")
+        bg_img = pygame.image.load(os.path.join(self.assets_path, "bg.jpg"))
         self.bg = pygame.transform.scale(bg_img, (self.BOARD_WIDTH, self.BOARD_HEIGHT))
 
         self.window = pygame.display.set_mode((self.WIDTH, self.HEIGHT))
-        pygame.display.set_caption("2D Drone Simulation")
 
         # Create instances of Drone and Target
-        self.drone = Drone.Drone(x=self.BOARD_WIDTH / 2, y=self.BOARD_HEIGHT / 2)
+        self.drone = Drone(
+            assets_path=self.assets_path,
+            x=self.BOARD_WIDTH / 2,
+            y=self.BOARD_HEIGHT / 2,
+        )
         self.target = self._generate_target()
 
         self.clock = pygame.time.Clock()
         self.running = True
 
-    def _generate_target(self) -> Target.Target:
+    @property
+    def assets_path(self):
+        return os.path.join(os.path.dirname(__file__), "assets")
+
+    def _generate_target(self) -> Target:
         # add padding 1.5 times the width and height of the drone
         x = random.randint(
             int(self.drone.width * 1.5), self.BOARD_WIDTH - int(self.drone.width * 1.5)
@@ -34,7 +44,7 @@ class Simulation:
             self.BOARD_HEIGHT - int(self.drone.height * 1.5),
         )
 
-        return Target.Target(x, y)
+        return Target(x, y)
 
     def calculate_target_distance(self):
         return (
