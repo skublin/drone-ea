@@ -14,17 +14,17 @@ class Target:
     def display_y(self, surface, drone, board_height):
         return drone.display_y(surface, board_height) + self.y - drone.y
 
-    def arrow_x(self, surface, drone, board_width):
+    def arrow_x(self, surface, drone):
         vector = self.vector(drone)
-        x = vector[0] / vector[1] * surface.get_height() / 2
+        x = (vector[0] / vector[1]) * (surface.get_height() / 2)
         return (
             min(abs(x), surface.get_width() / 2) * (1 if vector[0] > 0 else -1)
             + surface.get_width() / 2
         )
 
-    def arrow_y(self, surface, drone, board_height):
+    def arrow_y(self, surface, drone):
         vector = self.vector(drone)
-        y = vector[1] / vector[0] * surface.get_width() / 2
+        y = (vector[1] / vector[0]) * (surface.get_width() / 2)
         return (
             min(abs(y), surface.get_height() / 2) * (1 if vector[1] > 0 else -1)
             + surface.get_height() / 2
@@ -39,9 +39,9 @@ class Target:
         y = self.display_y(surface, drone, board_height)
 
         if x < 0 or x >= surface.get_width() or y < 0 or y >= surface.get_height():
-            # Draw the arrow pointing to the target
-            x = self.arrow_x(surface, drone, board_width)
-            y = self.arrow_y(surface, drone, board_height)
+            # Draw the arrow pointing to the target if target is out of bounds
+            x = self.arrow_x(surface, drone)
+            y = self.arrow_y(surface, drone)
             pygame.draw.circle(surface, self.color, (x, y), self.size)
         else:
             pygame.draw.circle(surface, self.color, (x, y), self.size)
