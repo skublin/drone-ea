@@ -25,7 +25,7 @@ class Simulation:
         self.running = True
 
     def _generate_target(self) -> Target.Target:
-        # add 50 padding
+        # add padding 1.5 times the width and height of the drone
         x = random.randint(
             int(self.drone.width * 1.5), self.BOARD_WIDTH - int(self.drone.width * 1.5)
         )
@@ -33,6 +33,7 @@ class Simulation:
             int(self.drone.height * 1.5),
             self.BOARD_HEIGHT - int(self.drone.height * 1.5),
         )
+
         return Target.Target(x, y)
 
     def calculate_target_distance(self):
@@ -53,23 +54,14 @@ class Simulation:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
-            # elif event.type == pygame.MOUSEBUTTONDOWN:
-            #     if event.button == 1:  # Left mouse button
-            #         # Update target position to where the mouse was clicked
-            #         pos = pygame.mouse.get_pos()
-            #         x, y = pos
-            #         x = min(max(x, 0), self.WIDTH)
-            #         y = min(max(y, 0), self.HEIGHT)
-            #         self.target.x, self.target.y = pos
-            #         print(f"Target moved to {pos}")
 
     def update(self):
         # Move the drone towards the target
         self.drone.move(pressed=pygame.key.get_pressed())
 
-        # if self.calculate_target_distance() < 40:
-        #     # Generate a new target if the drone has reached the current target
-        #     self.target = self._generate_target()
+        if self.calculate_target_distance() < 40:
+            # Generate a new target if the drone has reached the current target
+            self.target = self._generate_target()
 
     def draw(self):
         # Clear the screen
@@ -104,7 +96,7 @@ class Simulation:
 
         # Draw the drone and the target
         self.drone.draw(self.window, self.BOARD_WIDTH, self.BOARD_HEIGHT)
-        # self.target.draw(self.window, self.BOARD_WIDTH, self.BOARD_HEIGHT)
+        self.target.draw(self.window, self.drone, self.BOARD_WIDTH, self.BOARD_HEIGHT)
 
         # Update the display
         pygame.display.flip()
