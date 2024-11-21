@@ -4,23 +4,28 @@ import pygame
 
 
 class Drone:
-    def __init__(self, assets_path, x, y, width=150):
+    def __init__(self, use_pygame, assets_path, x, y, width=150):
         self.x = x  # X position
         self.y = y  # Y position
 
+        self.HEIGHT_WIDTH_RATIO = 0.22
         self.width = width
+        self.height = self.HEIGHT_WIDTH_RATIO * self.width
 
-        imp1 = pygame.image.load(
-            os.path.join(assets_path, "drone-1.png")
-        ).convert_alpha()
-        imp2 = pygame.image.load(
-            os.path.join(assets_path, "drone-2.png")
-        ).convert_alpha()
-        # resize the drone image
-        self.height = int(imp1.get_height() * (width / imp1.get_width()))
-        self.imp1 = pygame.transform.scale(imp1, (width, self.height))
-        self.imp2 = pygame.transform.scale(imp2, (width, self.height))
-        self.img = 1
+        self.use_pygame = use_pygame
+
+        if self.use_pygame:
+            imp1 = pygame.image.load(
+                os.path.join(assets_path, "drone-1.png")
+            ).convert_alpha()
+            imp2 = pygame.image.load(
+                os.path.join(assets_path, "drone-2.png")
+            ).convert_alpha()
+
+            # resize the drone image
+            self.imp1 = pygame.transform.scale(imp1, (width, self.height))
+            self.imp2 = pygame.transform.scale(imp2, (width, self.height))
+            self.img = 1
 
         # Drone properties (needed for physics)
         self.mass, self.drone_size, self.gravity = 1, 30, 0.1
@@ -80,8 +85,11 @@ class Drone:
         else:
             return surface.get_height() / 2
 
-    def _update_thruster_force(self, pressed: list[int]):
-        # There can be multiple keys pressed at the same time
+    def _update_thruster_force(self, keys: list[int]):
+        """
+        There can be multiple keys pressed at the same time
+            - keys: list of 4 integers representing the keys pressed - [W, S, A, D]
+        """
 
         # Set thrusters to default value
         self.left_thruster, self.right_thruster = (
@@ -89,26 +97,26 @@ class Drone:
             self.thruster_amplitude,
         )
 
-        if pressed[pygame.K_w]:
+        if keys[0]:  # W
             # Increase both thrusters force
             self.left_thruster += self.thruster_amplitude
             self.right_thruster += self.thruster_amplitude
 
-        if pressed[pygame.K_s]:
+        if keys[1]:  # S
             # Decrease both thrusters force
             self.left_thruster -= self.thruster_amplitude
             self.right_thruster -= self.thruster_amplitude
 
-        if pressed[pygame.K_a]:
+        if keys[2]:  # A
             # Decrease left thruster force
             self.left_thruster -= self.thruster_diff_amplitude
 
-        if pressed[pygame.K_d]:
+        if keys[3]:  # D
             # Decrease right thruster force
             self.right_thruster -= self.thruster_diff_amplitude
 
-    def move(self, pressed: list[int]):
-        self._update_thruster_force(pressed)
+    def move(self, keys: list[int]):
+        self._update_thruster_force(keys)
 
         self.x_speed += self.x_acceleration
         self.y_speed += self.y_acceleration
@@ -120,6 +128,9 @@ class Drone:
 
     def draw(self, surface, board_width, board_height):
         # draw drone and rotate it based on angle
+
+        if not self.use_pygame:
+            return
 
         if self.img == 1:
             drone = pygame.transform.rotate(self.imp1, self.angle)
