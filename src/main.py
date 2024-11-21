@@ -1,25 +1,22 @@
 import os
 import sys
+import copy
 import pygame
 import random
 import keras
 import numpy
 from models import Drone
 from models import Target
-
-
-class Settings:
-    def __init__(self, width=800, height=600):
-        self.FPS = 60
-
-        self.WIDTH = width
-        self.HEIGHT = height
-
-        self.BOARD_WIDTH, self.BOARD_HEIGHT = 2 * self.WIDTH, 2 * self.HEIGHT
+from settings import Settings, TRAINING_TARGETS
 
 
 class Simulation:
-    def __init__(self, use_pygame: bool, settings: Settings):
+    def __init__(
+        self,
+        use_pygame: bool,
+        settings: Settings,
+        targets: list[list[int]] | None = None,
+    ):
 
         self.settings = settings
 
@@ -30,6 +27,8 @@ class Simulation:
             x=self.BOARD_WIDTH / 2,
             y=self.BOARD_HEIGHT / 2,
         )
+
+        self.targets = targets
         self.target = self._generate_target()
 
         self.score = 0
@@ -81,6 +80,10 @@ class Simulation:
         ]
 
     def _generate_target(self) -> Target:
+        if self.targets:
+            position = self.targets.pop(0)
+            return Target(position[0], position[1])
+
         # add padding 1.5 times the width and height of the drone
         x = random.randint(
             int(self.drone.width * 1.5), self.BOARD_WIDTH - int(self.drone.width * 1.5)
@@ -128,7 +131,7 @@ class Simulation:
 
 
 class Game:
-    def __init__(self, model_name: str):
+    def __init__(self, model_name: str, targets: list[list[int]] | None = None):
         pygame.init()
         pygame.display.set_caption("Drone Simulation")
 
@@ -150,7 +153,9 @@ class Game:
         self.clock = pygame.time.Clock()
 
         # setup game simulation
-        self.simulation = Simulation(use_pygame=True, settings=self.settings)
+        self.simulation = Simulation(
+            use_pygame=True, settings=self.settings, targets=targets
+        )
 
     @property
     def assets_path(self):
@@ -175,7 +180,9 @@ class Game:
     @property
     def keys(self) -> list[int]:
         if self.model:
-            predictions = self.model.predict(numpy.array([self.simulation.nn_input]))
+            predictions = self.model.predict(
+                numpy.array([self.simulation.nn_input]), verbose=0
+            )
             return [1 if p >= 0.5 else 0 for p in predictions[0]]
 
         keys = pygame.key.get_pressed()
@@ -242,5 +249,7 @@ class Game:
 
 
 if __name__ == "__main__":
-    game = Game(model_name="models/model-4.h5")
+    game = Game(
+        model_name="models/model-13.h5", targets=copy.deepcopy(TRAINING_TARGETS)
+    )
     game.run()
