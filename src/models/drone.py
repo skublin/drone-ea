@@ -67,6 +67,28 @@ class Drone:
             (self.right_thruster - self.left_thruster) * self.drone_size
         ) / self.mass
 
+    @property
+    def is_flipped(self) -> bool:
+        """Return True if the drone is flipped (upside down)"""
+
+        # TODO: Should remove full circles and normalize angle to be between -180 and 180?
+        # # remove full circles
+        # angle = (
+        #     angle + ((abs(angle) // 360) * 360)
+        #     if angle < 0
+        #     else angle - ((abs(angle) // 360) * 360)
+        # )
+
+        # # normalize angle to be between -180 and 180
+        # if abs(angle) > 180:
+        #     # switch sign
+        #     if angle > 0:
+        #         angle = -1 * (180 - (angle % 180))
+        #     else:
+        #         angle = angle % 180
+
+        return self.angle > 90 or self.angle < -90
+
     def display_x(self, surface, board_width):
         # X position of the drone on the display
 

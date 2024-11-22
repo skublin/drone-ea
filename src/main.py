@@ -1,12 +1,14 @@
 import os
 import sys
 import copy
+import math
 import pygame
 import random
 import keras
 import numpy
 from models import Drone
 from models import Target
+from utils import GraphModel
 from settings import Settings, TRAINING_TARGETS
 
 
@@ -173,16 +175,14 @@ class Game:
                 [input_layer, dense_layer1, dense_layer2, output_layer]
             )
             model.load_weights(self.model_name)
-            self._model = model
+            self._model = GraphModel(model=model)
 
         return self._model
 
     @property
     def keys(self) -> list[int]:
         if self.model:
-            predictions = self.model.predict(
-                numpy.array([self.simulation.nn_input]), verbose=0
-            )
+            predictions = self.model.predict(numpy.array([self.simulation.nn_input]))
             return [1 if p >= 0.5 else 0 for p in predictions[0]]
 
         keys = pygame.key.get_pressed()
@@ -250,6 +250,6 @@ class Game:
 
 if __name__ == "__main__":
     game = Game(
-        model_name="models/model-13.h5", targets=copy.deepcopy(TRAINING_TARGETS)
+        model_name="models/model-48.h5", targets=copy.deepcopy(TRAINING_TARGETS)
     )
     game.run()

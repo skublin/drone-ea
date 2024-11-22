@@ -1,24 +1,19 @@
+import time
 import copy
 import numpy
 import pygad
 import pygad.nn
 import pygad.gann
 import pygad.kerasga
+
 import keras
 import pickle
 from main import Simulation
+from utils import GraphModel
 from settings import Settings, TRAINING_TARGETS
 
 
-def fitness_func(ga_instance, solution, sol_idx):
-    global GANN_instance, model
-
-    model_weights_matrix = pygad.kerasga.model_weights_as_matrix(
-        model=model, weights_vector=solution
-    )
-
-    model.set_weights(weights=model_weights_matrix)
-
+def calc_fitness_score(graph_model):
     simulation = Simulation(
         use_pygame=False, settings=Settings(), targets=copy.deepcopy(TRAINING_TARGETS)
     )
@@ -36,6 +31,9 @@ def fitness_func(ga_instance, solution, sol_idx):
     current_target_iterations = 1
 
     for frame_num in range(1, max_time * simulation.FPS + 1):
+        # if drone is flipped - stop simulation
+        if simulation.drone.is_flipped:
+            break
 
         prev_score = simulation.score
 
@@ -51,7 +49,9 @@ def fitness_func(ga_instance, solution, sol_idx):
                 simulation.calculate_target_distance() * 4
             )
 
-        predictions = model.predict(numpy.array([simulation.nn_input]), verbose=0)
+        predictions = graph_model.predict(numpy.array([simulation.nn_input]))
+        # numpy.array([simulation.nn_input])
+        # predictions = [[0, 0, 0, 0]]
         keys = [1 if p >= 0.5 else 0 for p in predictions[0]]
         simulation.next(keys)
 
@@ -77,9 +77,10 @@ def fitness_func(ga_instance, solution, sol_idx):
 
             # add a reward for winning
             seconds = current_target_iterations // simulation.FPS
-            score += (
+            target_score = (
                 starting_distance - seconds * (starting_distance / simulation.FPS)
             ) / starting_distance
+            score += target_score
 
             # update starting distance and reset current target iterations
             current_target_iterations = 1
@@ -98,8 +99,12 @@ def fitness_func(ga_instance, solution, sol_idx):
         # calculate only travel score
         score += score_travel / current_target_iterations
 
-    # if player not lost and still has time
-    if simulation.running and frame_num < max_time * simulation.FPS:
+    # if player not lost, drone isn't flipped and still has time
+    if (
+        simulation.running
+        and not simulation.drone.is_flipped
+        and frame_num < max_time * simulation.FPS
+    ):
         # add reward from 0 to 10 based on remaining time
         score += (
             (max_time * simulation.FPS - frame_num) / (max_time * simulation.FPS)
@@ -107,8 +112,23 @@ def fitness_func(ga_instance, solution, sol_idx):
 
     # normalize score
     score = max(score, 0) / max_score
+    return score, frame_num / simulation.FPS, simulation
+
+
+def fitness_func(ga_instance, solution, sol_idx):
+    global GANN_instance, model
+
+    model_weights_matrix = pygad.kerasga.model_weights_as_matrix(
+        model=model, weights_vector=solution
+    )
+
+    model.set_weights(weights=model_weights_matrix)
+    graph_model = GraphModel(model=model)
+
+    score, time, simulation = calc_fitness_score(graph_model)
+
     print(
-        f"Generation: {ga_instance.generations_completed + 1}, Solution: {sol_idx}, Collected Targets: {simulation.score}, Fitness score: {score}"
+        f"Generation: {ga_instance.generations_completed + 1 + initial_population_idx}, Solution: {sol_idx}, Collected Targets: {simulation.score}, Fitness score: {score}, Time: {time}"
     )
 
     return score
@@ -117,24 +137,27 @@ def fitness_func(ga_instance, solution, sol_idx):
 def callback_generation(ga_instance):
     global GANN_instance, last_fitness
 
-    last_fitness = ga_instance.best_solution()[1].copy()
+    solution, solution_fitness, solution_idx = ga_instance.best_solution()
+    last_fitness = solution_fitness.copy()
+
     print(
-        "Generation = {generation}".format(generation=ga_instance.generations_completed)
+        f"Generation = {ga_instance.generations_completed+initial_population_idx} BEST FITNESS = {solution_fitness} BEST SOLUTION = {solution_idx}"
     )
     # save the best model for each generation
 
-    solution, solution_fitness, solution_idx = ga_instance.best_solution()
     model_weights_matrix = pygad.kerasga.model_weights_as_matrix(
         model=model, weights_vector=solution
     )
     model.set_weights(weights=model_weights_matrix)
-    model.save(f"models/model-{ga_instance.generations_completed}.h5")
+    model.save(
+        f"models/model-{ga_instance.generations_completed+initial_population_idx}.h5"
+    )
 
     # save population weights to file
     pickle.dump(
         ga_instance.population,
         open(
-            f"weights/population_{ga_instance.generations_completed}-weights.pkl",
+            f"weights/population_{ga_instance.generations_completed+initial_population_idx}-weights.pkl",
             "wb",
         ),
     )
@@ -152,19 +175,28 @@ output_layer = keras.layers.Dense(4, activation="sigmoid")
 model = keras.Sequential([input_layer, dense_layer1, dense_layer2, output_layer])
 
 # Creating an initial population of neural networks. The return of the initial_population() function holds references to the networks, not their weights. Using such references, the weights of all networks can be fetched.
-num_solutions = 20  # A solution or a network can be used interchangeably.
+num_solutions = 50  # A solution or a network can be used interchangeably.
 
 GANN_instance = pygad.kerasga.KerasGA(model=model, num_solutions=num_solutions)
 
 # To prepare the initial population, there are 2 ways:
 # 1) Prepare it yourself and pass it to the initial_population parameter. This way is useful when the user wants to start the genetic algorithm with a custom initial population.
 # 2) Assign valid integer values to the sol_per_pop and num_genes parameters. If the initial_population parameter exists, then the sol_per_pop and num_genes parameters are useless.
-# population_weights_file = "weights/population_1000-weights.pkl"
-population_weights_file = None
 
-if population_weights_file is not None:
-    population_weights = pickle.load(open(population_weights_file, "rb"))
-    initial_population = population_weights
+initial_population_idx = 43
+# initial_population_idx = 0
+
+if initial_population_idx is not None:
+    population_weights = pickle.load(
+        open(f"weights/population_{initial_population_idx}-weights.pkl", "rb")
+    )
+
+    # reshape weights matrix to match number of solutions
+    initial_population = []
+    for i in range(0, num_solutions):
+        initial_population.append(population_weights[i % 20])
+
+    initial_population = numpy.array(initial_population)
 else:
     initial_population = GANN_instance.population_weights
 
@@ -174,21 +206,12 @@ num_parents_mating = (
 
 num_generations = 1000  # Number of generations.
 
-mutation_percent_genes = [
-    5,
-    10,
-]  # Percentage of genes to mutate. This parameter has no action if the parameter mutation_num_genes exists.
+mutation_percent_genes = 10  # mutate 10% of genes - to preserve diversity
+mutation_type = "random"  # mutate randomly
 
-parent_selection_type = "sss"  # Type of parent selection.
+parent_selection_type = "tournament"  # Tournament selection - Selects the best solution by a tournament competition.
 
-crossover_type = "single_point"  # Type of the crossover operator.
-
-mutation_type = "adaptive"  # Type of the mutation operator.
-
-keep_parents = 1  # Number of parents to keep in the next population. -1 means keep all parents and 0 means keep nothing.
-
-init_range_low = -2
-init_range_high = 5
+crossover_type = "uniform"  # Uniform crossover - A parent is selected randomly for each gene, mixes genes more evenly
 
 ga_instance = pygad.GA(
     num_generations=num_generations,
@@ -196,32 +219,30 @@ ga_instance = pygad.GA(
     initial_population=initial_population,
     fitness_func=fitness_func,
     mutation_percent_genes=mutation_percent_genes,
-    init_range_low=init_range_low,
-    init_range_high=init_range_high,
     parent_selection_type=parent_selection_type,
     crossover_type=crossover_type,
     mutation_type=mutation_type,
-    keep_parents=keep_parents,
+    keep_parents=num_parents_mating // 2,  # Keep half of parents
+    keep_elitism=3,  # Keep 3 best solutions
     suppress_warnings=True,
     on_generation=callback_generation,
-    parallel_processing=["thread", 10],
 )
 
 
-# run on multiple threads
-ga_instance.run()
+if __name__ == "__main__":
+    # run on multiple threads
+    ga_instance.run()
 
-# save the best model
-solution, solution_fitness, solution_idx = ga_instance.best_solution()
-model_weights_matrix = pygad.kerasga.model_weights_as_matrix(
-    model=model, weights_vector=solution
-)
-model.set_weights(weights=model_weights_matrix)
-model.save(f"model-{num_generations}.h5")
+    # # save the best model
+    # solution, solution_fitness, solution_idx = ga_instance.best_solution()
+    # model_weights_matrix = pygad.kerasga.model_weights_as_matrix(
+    #     model=model, weights_vector=solution
+    # )
+    # model.set_weights(weights=model_weights_matrix)
+    # model.save(f"model-{num_generations}.h5")
 
-
-# save population weights to file
-pickle.dump(
-    ga_instance.population,
-    open(f"weights/population_{num_generations}-weights.pkl", "wb"),
-)
+    # # save population weights to file
+    # pickle.dump(
+    #     ga_instance.population,
+    #     open(f"weights/population_{num_generations}-weights.pkl", "wb"),
+    # )
