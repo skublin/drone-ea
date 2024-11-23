@@ -19,7 +19,7 @@ def calc_fitness_score(graph_model):
     )
 
     # initial distance to target
-    starting_distance = simulation.calculate_target_distance()
+    min_distance = starting_distance = simulation.calculate_target_distance()
 
     max_time, max_target_score = 30, 10
 
@@ -31,42 +31,47 @@ def calc_fitness_score(graph_model):
     current_target_iterations = 1
 
     for frame_num in range(1, max_time * simulation.FPS + 1):
-        # if drone is flipped - stop simulation
-        if simulation.drone.is_flipped:
-            break
 
         prev_score = simulation.score
 
-        # compute travel score
-        if simulation.calculate_target_distance() <= starting_distance:
-            # add reward from range 0.5 to 1
-            score_travel += 1 - (
-                simulation.calculate_target_distance() / (starting_distance * 2)
-            )
-        else:
-            # add penalty from range 0 to 0.25
-            score_travel += starting_distance / (
-                simulation.calculate_target_distance() * 4
-            )
+        # increase score_travel only if drone is not flipped
+        if not simulation.drone.is_flipped:
 
+            # compute travel score, add reward if distance to target is decreasing
+            # add penalty if distance to target is increasing
+            if simulation.calculate_target_distance() <= min_distance:
+                # update min distance
+                min_distance = simulation.calculate_target_distance()
+
+                # add reward from range 0.5 to 1
+                score_travel += 1 - (
+                    simulation.calculate_target_distance() / (min_distance * 2)
+                )
+            else:
+                # add penalty from range 0 to 0.25
+                score_travel += min_distance / (
+                    simulation.calculate_target_distance() * 4
+                )
+        else:
+            # add penalty for flipping the drone
+            score_travel -= score_travel / current_target_iterations
+
+        # get predictions from the model
         predictions = graph_model.predict(numpy.array([simulation.nn_input]))
-        # numpy.array([simulation.nn_input])
-        # predictions = [[0, 0, 0, 0]]
         keys = [1 if p >= 0.5 else 0 for p in predictions[0]]
         simulation.next(keys)
 
         # player out of bounds
         if not simulation.running:
-            # calculate final travel score
+            # add a penalty for losing
 
             # reduce score by 15%
             score *= 0.85
-            # reduce travel score by 95%
-            score += (score_travel / current_target_iterations) * 0.05
+            # reduce travel score by 90%
+            score += (score_travel / current_target_iterations) * 0.1
             score_travel = 0
             current_target_iterations = 1
 
-            # add a penalty for losing
             break
 
         # player reached the target
@@ -84,7 +89,7 @@ def calc_fitness_score(graph_model):
 
             # update starting distance and reset current target iterations
             current_target_iterations = 1
-            starting_distance = simulation.calculate_target_distance()
+            starting_distance = min_distance = simulation.calculate_target_distance()
 
             # stop if reached max score
             if simulation.score >= max_target_score:
@@ -94,23 +99,19 @@ def calc_fitness_score(graph_model):
 
         current_target_iterations += 1
 
-    # if player not lost
-    if simulation.running and current_target_iterations > 0:
+    # if player not lost, calculate only travel score
+    if simulation.running and current_target_iterations > 1:
         # calculate only travel score
         score += score_travel / current_target_iterations
 
-    # if player not lost, drone isn't flipped and still has time
-    if (
-        simulation.running
-        and not simulation.drone.is_flipped
-        and frame_num < max_time * simulation.FPS
-    ):
+    # if player not lost and still has time
+    if simulation.running and frame_num < max_time * simulation.FPS:
         # add reward from 0 to 10 based on remaining time
         score += (
             (max_time * simulation.FPS - frame_num) / (max_time * simulation.FPS)
         ) * 10
 
-    # normalize score
+    # normalize score (from 0 to 1)
     score = max(score, 0) / max_score
     return score, frame_num / simulation.FPS, simulation
 
@@ -123,9 +124,18 @@ def fitness_func(ga_instance, solution, sol_idx):
     )
 
     model.set_weights(weights=model_weights_matrix)
-    graph_model = GraphModel(model=model)
 
-    score, time, simulation = calc_fitness_score(graph_model)
+    # 4 retries
+    for i in range(5):
+        try:
+            graph_model = GraphModel(model=model)
+            score, time, simulation = calc_fitness_score(graph_model)
+            break
+        except Exception as e:
+            if i == 4:
+                raise e
+            else:
+                print(e)
 
     print(
         f"Generation: {ga_instance.generations_completed + 1 + initial_population_idx}, Solution: {sol_idx}, Collected Targets: {simulation.score}, Fitness score: {score}, Time: {time}"
@@ -183,7 +193,7 @@ GANN_instance = pygad.kerasga.KerasGA(model=model, num_solutions=num_solutions)
 # 1) Prepare it yourself and pass it to the initial_population parameter. This way is useful when the user wants to start the genetic algorithm with a custom initial population.
 # 2) Assign valid integer values to the sol_per_pop and num_genes parameters. If the initial_population parameter exists, then the sol_per_pop and num_genes parameters are useless.
 
-initial_population_idx = 43
+initial_population_idx = 100
 # initial_population_idx = 0
 
 if initial_population_idx is not None:
@@ -201,17 +211,17 @@ else:
     initial_population = GANN_instance.population_weights
 
 num_parents_mating = (
-    10  # Number of solutions to be selected as parents in the mating pool.
+    15  # Number of solutions to be selected as parents in the mating pool.
 )
 
-num_generations = 1000  # Number of generations.
+num_generations = 5000  # Number of generations.
 
-mutation_percent_genes = 10  # mutate 10% of genes - to preserve diversity
+mutation_percent_genes = 5  # mutate 5% of genes - to preserve diversity
 mutation_type = "random"  # mutate randomly
 
 parent_selection_type = "tournament"  # Tournament selection - Selects the best solution by a tournament competition.
 
-crossover_type = "uniform"  # Uniform crossover - A parent is selected randomly for each gene, mixes genes more evenly
+crossover_type = "single_point"  # Single-point crossover - A single point is selected on the parent solutions where the genes are swapped between the parents to produce children.
 
 ga_instance = pygad.GA(
     num_generations=num_generations,
@@ -222,7 +232,7 @@ ga_instance = pygad.GA(
     parent_selection_type=parent_selection_type,
     crossover_type=crossover_type,
     mutation_type=mutation_type,
-    keep_parents=num_parents_mating // 2,  # Keep half of parents
+    keep_parents=5,  # Keep 5 of parents
     keep_elitism=3,  # Keep 3 best solutions
     suppress_warnings=True,
     on_generation=callback_generation,

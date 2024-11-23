@@ -250,6 +250,6 @@ class Game:
 
 if __name__ == "__main__":
     game = Game(
-        model_name="models/model-48.h5", targets=copy.deepcopy(TRAINING_TARGETS)
+        model_name="models/model-120.h5", targets=copy.deepcopy(TRAINING_TARGETS)
     )
     game.run()

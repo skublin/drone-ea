@@ -3,7 +3,7 @@ import glob
 import copy
 from settings import TRAINING_TARGETS
 from main import Game
-from utils import Model
+from utils import GraphModel
 import time
 
 # def get_model(model_name):
@@ -22,7 +22,7 @@ import time
 
 def test_models(start, end, step=1):
     for i in range(start, end, step):
-        model = Model(f"models/model-{i}.h5")
+        model = GraphModel(f"models/model-{i}.h5")
         score, time, _ = calc_fitness_score(model)
         print(f"MODEL: {i} Score: {score} Time: {time}")
 
@@ -52,6 +52,4 @@ def display_games(use_pygame, n):
 
 if __name__ == "__main__":
     # display_games(use_pygame=True, n=10)
-    t = time.time()
-    test_models(40, 41)
-    print(time.time() - t)
+    test_models(100, 120)
