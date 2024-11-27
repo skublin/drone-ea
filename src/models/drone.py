@@ -137,8 +137,45 @@ class Drone:
             # Decrease right thruster force
             self.right_thruster -= self.thruster_diff_amplitude
 
-    def move(self, keys: list[int]):
-        self._update_thruster_force(keys)
+    def _update_predictions_thruster(self, predictions: list[float]):
+        """
+        Update thrusters based on predictions of the model
+            - predictions: list of 2 floats (from 0 to 1) representing the predictions of the model - thruster amplitude force, thruster amplitude difference
+        """
+
+        # normalize predictions to be between -1 and 1
+        thruster_force, thruster_diff = [2 * p - 1 for p in predictions]
+
+        # Set thrusters to default value
+        self.left_thruster, self.right_thruster = (
+            self.thruster_amplitude,
+            self.thruster_amplitude,
+        )
+
+        # Update thrusters based on predictions
+        self.left_thruster += (thruster_force * self.thruster_amplitude) - (
+            thruster_diff * self.thruster_diff_amplitude
+        )
+
+        self.right_thruster += (thruster_force * self.thruster_amplitude) + (
+            thruster_diff * self.thruster_diff_amplitude
+        )
+
+    def move(
+        self, keys: list[int] | None = None, predictions: list[float] | None = None
+    ):
+        """
+        keys - list of 4 integers representing the keys pressed by the player - [W, S, A, D]
+        predictions - list of 2 floats representing the predictions of the model - thruster amplitude force, thruster amplitude difference
+        """
+
+        if not keys and not predictions:
+            raise ValueError("Provide either keys or predictions")
+
+        if keys:
+            self._update_thruster_force(keys)
+        else:
+            self._update_predictions_thruster(predictions)
 
         self.x_speed += self.x_acceleration
         self.y_speed += self.y_acceleration
