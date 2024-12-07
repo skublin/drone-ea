@@ -161,7 +161,7 @@ if __name__ == "__main__":
 
     for targets in TRAINING_TARGETS_LIST:
         game = Game(
-            model_name="models-2-dim-deap/model-37.pkl",
+            model_name="models-og/model-4.h5",
             # model_name=None,
             time=6,
             targets=copy.deepcopy(targets),

@@ -52,11 +52,12 @@ def model_weights_as_matrix(model, weights_vector):
 
 # Function to create model
 def model_build(in_dimen, out_dimen):
-    model = tf.keras.Sequential()
-    model.add(tf.keras.layers.Dense(16, input_dim=in_dimen, activation="relu"))
-    # model.add(tf.keras.layers.Dense(16, activation="relu"))
-    model.add(tf.keras.layers.Dense(8, activation="relu"))
-    model.add(tf.keras.layers.Dense(out_dimen, activation="sigmoid"))
+    input_layer = tf.keras.layers.Input(shape=(in_dimen,))
+    dense_layer1 = tf.keras.layers.Dense(8, activation="tanh")
+    dense_layer2 = tf.keras.layers.Dense(8, activation="tanh")
+    output_layer = tf.keras.layers.Dense(out_dimen, activation="sigmoid")
+
+    model = tf.keras.Sequential([input_layer, dense_layer1, dense_layer2, output_layer])
 
     # Just like before, compilation is not required for the algorithm to run
     model.compile(loss="mse", optimizer="adam", metrics=["accuracy"])
@@ -132,11 +133,10 @@ def calc_fitness_score(graph_model, training_targets):
     )
 
     # max score that can be achieved
-    # score = loss_penalty * 2  # initial score
-    score = 0
-    # max_score = (
-    #     score + target_reward * len(training_targets) + sim_time * survive_reward
-    # )
+    score = loss_penalty * 2  # initial score
+    max_score = (
+        score + target_reward * len(training_targets) + sim_time * survive_reward
+    )
 
     cur_target_iterations = 1
 
@@ -180,7 +180,7 @@ def calc_fitness_score(graph_model, training_targets):
         cur_target_iterations += 1
 
     # # normalize score (from 0 to 1)
-    # score = max(score, 0) / max_score
+    score = max(score, 0) / max_score
     return score, frame_num / simulation.FPS, simulation
 
 
