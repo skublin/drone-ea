@@ -1,50 +1,98 @@
-# Evolutionary Drone Simulation
 
-This project is a 2D simulation of a drone (UAV) navigating towards a target using evolutionary algorithms. The simulation is built using Python and leverages libraries such as Pygame and Pymunk to create a visual representation of the drone's movement and control in a two-dimensional space.
+# Drone Simulation with Neural Network Integration
+
+This project simulates a drone navigating towards targets within a 2D environment. The simulation is designed to integrate human control or neural network models trained by genetic algorithm for autonomous navigation.
 
 ## Features
-- **Drone Navigation**: The drone moves towards a target point in the 2D environment, adapting its path to reach the goal.
-- **Interactive Simulation**: The user can click to set a new target for the drone in real-time, allowing for interactive demonstrations of the drone's behavior.
-- **Evolutionary Algorithm (Upcoming)**: Future iterations of this project will include an evolutionary algorithm to improve the control logic for the drone.
 
-## Project Structure
-- `Simulation.py`: Contains the `Simulation` class, which manages the main loop of the simulation, including event handling, updates, and rendering.
-- `Drone.py`: Contains the `Drone` class, which manages the drone's properties and movement logic.
-- `Target.py`: Contains the `Target` class, which represents the target location that the drone attempts to reach.
+- **Drone Dynamics**: Realistic physics for drone movement including acceleration, angular rotation, and thruster control.
+- **Target Tracking**: The drone aims to reach randomly generated or pre-defined targets.
+- **Neural Network Integration**: Supports custom-trained (with genetic algorithm) neural networks for autonomous navigation.
+- **Visualization**: Real-time simulation using `pygame`.
 
-## Requirements
-The required Python libraries are listed in the `requirements.txt` file. To install them, run the following command:
+---
 
-```sh
-pip install -r requirements.txt
-```
+## Getting Started
 
-## How to Run
+### Prerequisites
+
+- Python 3.9 or later
+- Virtual environment (optional, but recommended)
+
+### Installation
+
 1. Clone the repository:
-   ```sh
+   ```bash
    git clone https://github.com/skublin/drone-ea.git
-   ```
-2. Navigate to the project directory:
-   ```sh
    cd drone-ea
    ```
-3. Install the required dependencies:
-   ```sh
+
+2. Install dependencies:
+   ```bash
    pip install -r requirements.txt
    ```
-4. Run the simulation:
-   ```sh
-   python Simulation.py
-   ```
 
-## Future Improvements
-- **Evolutionary Control Algorithms**: Implement evolutionary algorithms to optimize the drone's pathfinding and target tracking capabilities.
-- **Advanced Physics**: Utilize Pymunk for more realistic physics simulations, such as obstacle avoidance and more complex movement patterns.
+3. Place any pre-trained models in the `models` directory.
 
-## Contributing
-Contributions are welcome! Feel free to open issues or submit pull requests to enhance the simulation or add new features.
+---
+
+## Running the Simulation
+
+To run the simulation with a pre-trained neural network model:
+
+```bash
+python main.py --model models/model-1.h5
+```
+
+For manual control (keyboard):
+```bash
+python main.py
+```
+
+---
+
+## Key Controls (Manual Mode)
+
+| Key    | Action       |
+|--------|--------------|
+| `W`    | Increase thrust (both engines) |
+| `S`    | Decrease thrust (both engines) |
+| `A`    | Decrease left engine thrust    |
+| `D`    | Decrease right engine thrust   |
+
+---
+
+## Files and Structure
+
+- `main.py`: Entry point for running the simulation.
+- `train.py`: Utilities for training or evaluating neural network models.
+- `simulation.py`: Manages the game state and logic.
+- `drone.py`: Handles drone physics and rendering.
+- `target.py`: Defines target behavior and drawing.
+- `settings.py`: Central configuration file for the simulation.
+
+---
+
+## Neural Network Integration
+
+You can integrate custom neural networks trained to navigate the drone. The model should:
+- Accept a 6-dimensional input vector:
+  - `[dx, dy, vx, vy, angular_velocity, angle]`
+- Output 2 values:
+  - `[force_amplitude, force_difference]`
+
+To use a custom model, save it in `.h5` or `.pkl` format and specify its path in `main.py`.
+
+---
+
+## Future Enhancements
+
+- Add pre-trained models.
+- Include reinforcement learning examples.
+- Add more visual effects and drone states.
+
+---
 
 ## License
-This project is licensed under the MIT License.
 
-
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
